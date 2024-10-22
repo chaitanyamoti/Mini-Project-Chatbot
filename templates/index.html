@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+            position: relative; /* Added for absolute positioning of the chat */
+        }
+        .chat-container {
+            width: 400px; /* Fixed width */
+            height: 500px; /* Fixed height */
+            position: fixed; /* Fixed positioning */
+            bottom: 20px; /* Distance from bottom */
+            right: 20px; /* Distance from right */
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            display: none; /* Start hidden */
+            z-index: 1000; /* Ensure it's above other elements */
+        }
+        .chat-header {
+            background-color: #007bff; /* Header background color */
+            color: white;
+            padding: 10px;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .messages {
+            padding: 10px;
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .message {
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 75%;
+            word-wrap: break-word;
+            position: relative;
+            white-space: pre-wrap;
+            margin-bottom: 10px;
+        }
+        .message.user {
+            background-color: #DCF8C6;
+            align-self: flex-end;
+            text-align: right;
+        }
+        .message.bot {
+            background-color: #e5e5ea;
+            align-self: flex-start;
+        }
+        .message code {
+            display: block;
+            background-color: #f0f0f0;
+            padding: 8px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            position: relative;
+            margin-top: 5px;
+        }
+        .language-label {
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 5px;
+            display: block;
+        }
+        .copy-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .copy-all-button {
+            background-color: #28a745;
+            margin-left: 10px;
+        }
+        .input-container {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            position: relative;
+        }
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            border-radius: 20px;
+            border: 1px solid #ddd;
+            outline: none;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin-left: 10px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .floating-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            z-index: 1001; /* Above chat container */
+        }
+    </style>
+</head>
+<body>
+
+<button class="floating-button" onclick="toggleChat()">💬</button>
+<div class="chat-container" id="chatContainer">
+    <div class="chat-header">Chatty</div> <!-- Added header -->
+    <div class="messages" id="messages"></div>
+    <div class="input-container">
+        <input type="text" id="userInput" placeholder="Type your message...">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    // Function to append messages to chat
+    function appendMessage(text, className) {
+        const messageContainer = document.getElementById("messages");
+        const messageDiv = document.createElement("div");
+        messageDiv.classList.add("message", className);
+
+        // Format text for bold and italic
+        text = text
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')  // Bold
+            .replace(/\*(.+?)\*/g, '<em>$1</em>');             // Italic
+
+        // Check if the response contains code snippets (```), split them accordingly
+        if (className === "bot") {
+            const parts = text.split("```");
+            parts.forEach((part, index) => {
+                if (index % 2 === 0) {
+                    messageDiv.innerHTML += `<p>${part.trim()}</p>`;
+                } else {
+                    const codeBlock = document.createElement("code");
+                    const languageLabel = document.createElement("span");
+                    const detectedLanguage = detectLanguage(part.trim());
+                    languageLabel.className = "language-label";
+                    languageLabel.innerText = `Language: ${detectedLanguage}`;
+                    codeBlock.textContent = part.trim();
+                    messageDiv.appendChild(languageLabel);
+                    messageDiv.appendChild(codeBlock);
+
+                    const copyButton = document.createElement("button");
+                    copyButton.className = "copy-button";
+                    copyButton.innerText = "Copy Code";
+                    copyButton.onclick = () => {
+                        copyToClipboard(part.trim());
+                    };
+                    codeBlock.appendChild(copyButton);
+                }
+            });
+
+            const copyAllButton = document.createElement("button");
+            copyAllButton.className = "copy-all-button";
+            copyAllButton.innerText = "Copy All";
+            copyAllButton.onclick = () => {
+                copyToClipboard(text);
+            };
+            messageDiv.appendChild(copyAllButton);
+        } else {
+            messageDiv.innerHTML = `<p>${text}</p>`;
+        }
+
+        messageContainer.appendChild(messageDiv);
+        messageContainer.scrollTop = messageContainer.scrollHeight;
+    }
+
+    // Function to send message
+    function sendMessage() {
+        const userInput = document.getElementById("userInput");
+        const message = userInput.value.trim();
+        if (message === "") return;
+
+        appendMessage(message, "user");
+        userInput.value = "";
+
+        fetch('/api/chatbot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: message }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            appendMessage(data.response, "bot");
+        })
+        .catch(error => {
+            alert('There was an error processing your request. Please try again.');
+            console.error('Error:', error);
+        });
+    }
+
+    document.getElementById("userInput").addEventListener("keypress", function(event) {
+        if (event.key === "Enter") {
+            sendMessage();
+            event.preventDefault();
+        }
+    });
+
+    function toggleChat() {
+        const chatContainer = document.getElementById("chatContainer");
+        if (chatContainer.style.display === "none" || chatContainer.style.display === "") {
+            chatContainer.style.display = "flex"; // Show chat
+        } else {
+            chatContainer.style.display = "none"; // Hide chat
+        }
+    }
+
+    function copyToClipboard(code) {
+        navigator.clipboard.writeText(code)
+            .then(() => {
+                alert('Text copied to clipboard!');
+                console.log('Copied text:', code);
+            })
+            .catch(err => {
+                console.error('Could not copy text: ', err);
+            });
+    }
+
+    function detectLanguage(code) {
+        if (code.includes('#include')) {
+            return 'C';
+        } else if (code.includes('function') || code.includes('var') || code.includes('let')) {
+            return 'JavaScript';
+        } else if (code.includes('class')) {
+            return 'Java';
+        }
+        return 'Plain Text';
+    }
+</script>
+
+</body>
+</html>
+
