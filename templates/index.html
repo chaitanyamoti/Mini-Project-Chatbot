@@ -158,31 +158,39 @@
             .replace(/\*(.+?)\*/g, '<em>$1</em>');             // Italic
 
         // Check if the response contains code snippets (```), split them accordingly
+        const parts = text.split(/```/);
+        parts.forEach((part, index) => {
+            if (index % 2 === 0) {
+                // Regular text
+                const paragraph = document.createElement("p");
+                paragraph.innerHTML = part.trim(); // Using innerHTML for bold/italic
+                messageDiv.appendChild(paragraph);
+            } else {
+                // Code block
+                const codeBlock = document.createElement("code");
+                const languageLabel = document.createElement("span");
+                const detectedLanguage = detectLanguage(part.trim());
+                
+                languageLabel.className = "language-label";
+                languageLabel.innerText = `Language: ${detectedLanguage}`;
+                codeBlock.textContent = part.trim();
+                
+                messageDiv.appendChild(languageLabel);
+                messageDiv.appendChild(codeBlock);
+
+                // Copy button for the code block
+                const copyButton = document.createElement("button");
+                copyButton.className = "copy-button";
+                copyButton.innerText = "Copy Code";
+                copyButton.onclick = () => {
+                    copyToClipboard(part.trim());
+                };
+                codeBlock.appendChild(copyButton);
+            }
+        });
+
+        // Add a button to copy all text in the bot message
         if (className === "bot") {
-            const parts = text.split("```");
-            parts.forEach((part, index) => {
-                if (index % 2 === 0) {
-                    messageDiv.innerHTML += `<p>${part.trim()}</p>`;
-                } else {
-                    const codeBlock = document.createElement("code");
-                    const languageLabel = document.createElement("span");
-                    const detectedLanguage = detectLanguage(part.trim());
-                    languageLabel.className = "language-label";
-                    languageLabel.innerText = `Language: ${detectedLanguage}`;
-                    codeBlock.textContent = part.trim();
-                    messageDiv.appendChild(languageLabel);
-                    messageDiv.appendChild(codeBlock);
-
-                    const copyButton = document.createElement("button");
-                    copyButton.className = "copy-button";
-                    copyButton.innerText = "Copy Code";
-                    copyButton.onclick = () => {
-                        copyToClipboard(part.trim());
-                    };
-                    codeBlock.appendChild(copyButton);
-                }
-            });
-
             const copyAllButton = document.createElement("button");
             copyAllButton.className = "copy-all-button";
             copyAllButton.innerText = "Copy All";
@@ -190,12 +198,10 @@
                 copyToClipboard(text);
             };
             messageDiv.appendChild(copyAllButton);
-        } else {
-            messageDiv.innerHTML = `<p>${text}</p>`;
         }
 
         messageContainer.appendChild(messageDiv);
-        messageContainer.scrollTop = messageContainer.scrollHeight;
+        messageContainer.scrollTop = messageContainer.scrollHeight; // Scroll to the bottom
     }
 
     // Function to send message
@@ -229,6 +235,7 @@
         });
     }
 
+    // Allow sending message with Enter key
     document.getElementById("userInput").addEventListener("keypress", function(event) {
         if (event.key === "Enter") {
             sendMessage();
@@ -236,15 +243,13 @@
         }
     });
 
+    // Toggle chat visibility
     function toggleChat() {
         const chatContainer = document.getElementById("chatContainer");
-        if (chatContainer.style.display === "none" || chatContainer.style.display === "") {
-            chatContainer.style.display = "flex"; // Show chat
-        } else {
-            chatContainer.style.display = "none"; // Hide chat
-        }
+        chatContainer.style.display = chatContainer.style.display === "none" || chatContainer.style.display === "" ? "flex" : "none";
     }
 
+    // Copy code to clipboard
     function copyToClipboard(code) {
         navigator.clipboard.writeText(code)
             .then(() => {
@@ -256,6 +261,7 @@
             });
     }
 
+    // Detect programming language from code
     function detectLanguage(code) {
         if (code.includes('#include')) {
             return 'C';
