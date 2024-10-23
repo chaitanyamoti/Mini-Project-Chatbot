@@ -1,8 +1,13 @@
 from flask import Flask, render_template, request, jsonify
 import google.generativeai as genai
+from dotenv import load_dotenv
 import os
 
 app = Flask(__name__)
+
+# Load the environment variables from the .env file
+load_dotenv()
+
 
 # Configure the Gemini API
 genai.configure(api_key=os.getenv("API_KEY"))
